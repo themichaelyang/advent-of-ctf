@@ -125,4 +125,9 @@ file.each do |data|
   # expected.delete(number)
 end
 
-pp sequences
+# https://en.wikipedia.org/wiki/File_Transfer_Protocol#FTP_commands
+logged_in = sequences.values.select do |seq|
+  seq.each_cons(2).any? { _1.include?("PASS") && _2.include?("2") }
+end
+
+puts logged_in
