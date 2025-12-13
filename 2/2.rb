@@ -36,7 +36,7 @@ def ipv4_packet(packet)
   destination_ip = header[15, 4].unpack("CCCC").join(".")
 
   # network order = big endian
-  total_length = header[2..3].unpack("n")
+  # total_length = header[2..3].unpack("n")
   data = packet[header_length..]
 
   {
@@ -50,21 +50,23 @@ def ipv4_packet(packet)
 end
 
 def tcp_segment(segment)
-  source_port, destination_port, sequence_number, ack_number = segment.unpack("n n N N")
+  # ack number is the next expected number in the sequence
+  # ack numbers are used to coordinate
+  source_port, destination_port, sequence_number, acknowledgement_number = segment.unpack("n n N N")
   data_offset = (segment[12].ord >> 4) * 4
   flags = segment[13].ord.to_s(2).rjust(8, "0").chars.map { |f| f == '1' }
   raise "not enough flags" if flags.length != 8
 
   data = segment[data_offset..]
 
-  # cwr, ece, urg, ack, psh, rst, syn, fin = flags
+  cwr, ece, urg, ack, psh, rst, syn, fin = flags
 
   {
     source_port:,
     destination_port:,
     sequence_number:,
-    ack_number:,
-    flags:,
+    acknowledgement_number: ack ? acknowledgement_number : nil,
+    flags: {cwr:, ece:, urg:, ack:, psh:, rst:, syn:, fin:},
     data:
   }
 end
@@ -98,5 +100,11 @@ file.each do |data|
   packet = ipv4_packet(frame[:data])
   # p packet
   segment = tcp_segment(packet[:data])
-  p segment
+  p a = {
+    source: "#{packet[:source_ip]}:#{segment[:source_port]}",
+    destination: "#{packet[:destination_ip]}:#{segment[:destination_port]}",
+    tcp_data: segment[:data],
+    number: segment[:sequence_number],
+    next_number: segment[:ack_number]
+  }
 end
