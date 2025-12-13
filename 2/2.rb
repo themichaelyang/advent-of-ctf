@@ -89,6 +89,10 @@ def ethernet_ii(data)
   }
 end
 
+messages = []
+sequences = {}
+expected = {}
+
 file.each do |data|
   # PCAP packet contains (according to Wireshark):
   # └─Ethernet II frame (link)
@@ -100,11 +104,25 @@ file.each do |data|
   packet = ipv4_packet(frame[:data])
   # p packet
   segment = tcp_segment(packet[:data])
-  p a = {
+  message = {
     source: "#{packet[:source_ip]}:#{segment[:source_port]}",
     destination: "#{packet[:destination_ip]}:#{segment[:destination_port]}",
     tcp_data: segment[:data],
     number: segment[:sequence_number],
-    next_number: segment[:ack_number]
+    next_number: segment[:acknowledgement_number]
   }
+
+  number = message[:number]
+  original_number = unless expected[number].nil?
+    expected[number]
+  else
+    number
+  end
+
+  sequences[original_number] ||= []
+  sequences[original_number] << message[:tcp_data]
+  expected[message[:next_number]] = original_number unless message[:next_number].nil?
+  # expected.delete(number)
 end
+
+pp sequences
