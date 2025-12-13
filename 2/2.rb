@@ -8,6 +8,7 @@ require 'bundler/setup'
 # from the internet: "what a packet is, Ethernet vs. IP vs. TCP vs. UDP etc"
 # What is a frame?
 
+# See: https://datatracker.ietf.org/doc/id/draft-gharris-opsawg-pcap-00.html
 require "pcaprub"
 
 file = PCAPRUB::Pcap.open_offline("ftpchal.pcap")
@@ -36,7 +37,6 @@ def ipv4_packet(packet)
 
   # network order = big endian
   total_length = header[2..3].unpack("n")
-
   data = packet[header_length..]
 
   {
@@ -49,19 +49,41 @@ def ipv4_packet(packet)
   }
 end
 
+def tcp_segment(segment)
+  source_port, destination_port, sequence_number, ack_number = segment.unpack("n n N N")
+  data_offset = (segment[12].ord >> 4) * 4
+  flags = segment[13].ord.to_s(2).rjust(8, "0").chars.map { |f| f == '1' }
+  raise "not enough flags" if flags.length != 8
+
+  data = segment[data_offset..]
+
+  # cwr, ece, urg, ack, psh, rst, syn, fin = flags
+
+  {
+    source_port:,
+    destination_port:,
+    sequence_number:,
+    ack_number:,
+    flags:,
+    data:
+  }
+end
+
 # https://en.wikipedia.org/wiki/Ethernet_frame#Structure
 def ethernet_ii(data)
   destination_mac, source_mac = data[..5].to_hex(":"), data[6..11].to_hex(":")
   type_or_length = data[12..13]
-  data = data[14..-5]
-  checksum = [-5..]
+  data = data[14..]
+  # I think the checksum is not present in this PCAP? FCS bits are set
+  # in the PCAP header which I don't have access to.
+  # checksum = [-4..]
 
   {
     destination_mac:,
     source_mac:,
     type_or_length:,
     data:,
-    checksum:
+    # checksum:
   }
 end
 
@@ -74,5 +96,7 @@ file.each do |data|
   data = data.force_encoding("ASCII-8BIT")
   frame = ethernet_ii(data)
   packet = ipv4_packet(frame[:data])
-  p packet
+  # p packet
+  segment = tcp_segment(packet[:data])
+  p segment
 end
