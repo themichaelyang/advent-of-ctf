@@ -131,3 +131,11 @@ logged_in = sequences.values.select do |seq|
 end
 
 puts logged_in
+
+# Some things I learned:
+# - Network layer model
+# - BGP hijacking
+# - Acknowledgement and sequence number usage
+# - Packet structures basics
+# - PCAP format basics
+# - Ruby pack/unpack/unpack1
